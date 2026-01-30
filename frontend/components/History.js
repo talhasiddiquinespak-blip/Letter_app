@@ -19,11 +19,26 @@ export default function History() {
   const fetchScans = async () => {
     try {
       setLoading(true)
-      const response = await axios.get(`${API_URL}/api/scan?page=${page}&limit=10`)
+      console.log('Fetching from:', `${API_URL}/api/scan?page=${page}&limit=10`)
+      
+      const response = await axios.get(`${API_URL}/api/scan?page=${page}&limit=10`, {
+        timeout: 10000
+      })
+      
+      console.log('Scans response:', response.data)
       setScans(response.data.data)
       setPagination(response.data.pagination)
     } catch (error) {
-      toast.error('Failed to load history')
+      console.error('Fetch scans error:', error)
+      
+      let errorMessage = 'Failed to load history'
+      if (error.response) {
+        errorMessage = `Server error: ${error.response.status}`
+      } else if (error.request) {
+        errorMessage = 'Cannot connect to backend. Check API URL in environment variables.'
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
