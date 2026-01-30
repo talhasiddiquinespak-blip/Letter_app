@@ -17,10 +17,25 @@ export default function Stats() {
   const fetchStats = async () => {
     try {
       setLoading(true)
-      const response = await axios.get(`${API_URL}/api/scan/stats`)
+      console.log('Fetching stats from:', `${API_URL}/api/scan/stats`)
+      
+      const response = await axios.get(`${API_URL}/api/scan/stats`, {
+        timeout: 10000
+      })
+      
+      console.log('Stats response:', response.data)
       setStats(response.data.data)
     } catch (error) {
-      toast.error('Failed to load stats')
+      console.error('Fetch stats error:', error)
+      
+      let errorMessage = 'Failed to load stats'
+      if (error.response) {
+        errorMessage = `Server error: ${error.response.status}`
+      } else if (error.request) {
+        errorMessage = 'Cannot connect to backend. Check API URL.'
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
