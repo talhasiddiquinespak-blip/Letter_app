@@ -22,7 +22,12 @@ const genAI = new GoogleGenerativeAI('AIzaSyBIeBsNaJcn2_E8VAWCTuNXrRovY7LfS1A');
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -41,6 +46,9 @@ if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir, { recursive: true });
 
 // Static files
 app.use('/uploads', express.static(uploadsDir));
+
+// Handle OPTIONS preflight
+app.options('*', cors());
 
 // File upload config
 const storage = multer.diskStorage({
@@ -115,16 +123,26 @@ function addToExcel(data) {
   return newId;
 }
 
-// OCR function
+// OCR function with enhanced preprocessing
 async function extractText(imagePath) {
   try {
+    // CamScanner-style preprocessing
     const processedBuffer = await sharp(imagePath)
+      .resize(3000, 3000, { 
+        fit: 'inside', 
+        withoutEnlargement: false 
+      })
       .grayscale()
       .normalize()
-      .sharpen()
+      .linear(1.2, -(128 * 1.2) + 128) // Increase contrast
+      .sharpen({ sigma: 1.5 })
+      .threshold(128) // Binarize
       .toBuffer();
     
-    const { data } = await Tesseract.recognize(processedBuffer, 'eng');
+    const { data } = await Tesseract.recognize(processedBuffer, 'eng', {
+      logger: m => console.log(m.status, m.progress)
+    });
+    
     return {
       text: data.text,
       confidence: data.confidence / 100
