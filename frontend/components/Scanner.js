@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Webcam from 'react-webcam'
 import { useDropzone } from 'react-dropzone'
 import axios from 'axios'
@@ -15,6 +15,11 @@ export default function Scanner({ onScanComplete }) {
   const [processing, setProcessing] = useState(false)
   const [result, setResult] = useState(null)
   const webcamRef = useRef(null)
+
+  // Debug: Log API URL
+  useEffect(() => {
+    console.log('API URL:', API_URL)
+  }, [])
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
@@ -52,6 +57,8 @@ export default function Scanner({ onScanComplete }) {
     setResult(null)
 
     try {
+      console.log('Sending request to:', `${API_URL}/api/scan`)
+      
       const formData = new FormData()
       
       if (processedImage) {
@@ -62,15 +69,28 @@ export default function Scanner({ onScanComplete }) {
       }
 
       const response = await axios.post(`${API_URL}/api/scan`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000 // 60 second timeout
       })
 
+      console.log('Response:', response.data)
       setResult(response.data)
       toast.success('Letter processed!')
       if (onScanComplete) onScanComplete()
     } catch (error) {
-      console.error(error)
-      toast.error(error.response?.data?.message || 'Processing failed')
+      console.error('Full error:', error)
+      console.error('Error response:', error.response)
+      
+      let errorMessage = 'Processing failed'
+      if (error.response) {
+        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`
+      } else if (error.request) {
+        errorMessage = 'Cannot connect to server. Check your backend URL.'
+      } else {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setProcessing(false)
     }
